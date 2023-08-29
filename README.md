@@ -1,6 +1,6 @@
 # Meusic
 
- Develop Enviroment: PyCharm
+ Develop Environment: PyCharm
 
 How to Use?
 1. Click the button "RUN"
