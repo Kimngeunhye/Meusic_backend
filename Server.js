@@ -9,7 +9,7 @@ app.use(cors());
 
 app.use(express.json());
 
-mongoose.connect('mongodb+srv://Kimgrace:sir439@experiment.yistdbf.mongodb.net/', {
+mongoose.connect('mongodb+srv://{Username}:{PW}@experiment.yistdbf.mongodb.net/', {
     // useNewUrlPaser: true,
     // useUnifiedTofology: true,
     // useCreateIndex: true,
