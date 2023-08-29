@@ -127,77 +127,46 @@ const initialData =  [
     }
 })();
 
-app.get('/api/experiments', async (req, res) => {
-    try {
-        const experiments = await Experiment.find({});
-        res.json(experiments);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
 app.get('/api/search', async (req, res) => {
-    const search = req.query.search;
+    const search = req.query.search.toLowerCase(); // 검색어를 소문자로 변환
 
-    const foundTopics = new Set();
-    const foundHypotheses = new Set();
-    const foundMaterials = new Set();
-    const foundProcess = new Set();
-    const foundResult = new Set();
+    const results = {}; // 객체를 사용해 중복을 방지
 
-    // 정확한 일치 검색
-    const exactMatches = await Experiment.find({ "Topic": search }, { "_id": 0 });
-    for (const x of exactMatches) {
-        const topic = x.Topic;
-        const hypothesis = x.Hypothesis;
-        const materials = x.Materials;
-        const Process = x.Process;
-        const Result = x.Result;
+    // 부분 일치 검색
+    const keyWords = search.split(" ");
 
-        if (!foundTopics.has(topic)) {
-            foundTopics.add(topic);
-            foundHypotheses.add(hypothesis); // 정확한 일치 검색의 경우 해당 Hypothesis도 저장
-            foundMaterials.add(materials);
-            foundProcess.add(process);
-            foundResult.add(result);
-        }
-        break; // 첫 번째 매치만 찾고 종료
-    }
+    for (const keyword of keyWords) {
+        const regex = new RegExp(keyword, "i");
+        const partialMatches = await Experiment.find({ "Topic": { $regex: regex } }, { "_id": 0 });
 
-    if (foundTopics.size === 0) {
-        const keyWords = search.split(" ");
+        for (const x of partialMatches) {
+            const topic = x.Topic;
 
-        // 부분 일치 검색
-        for (const keyword of keyWords) {
-            const regex = new RegExp(keyword, "i");
-            const partialMatches = await Experiment.find({ "Topic": { $regex: regex } }, { "_id": 0 });
-            for (const y of partialMatches) {
-                const topic = y.Topic;
-                const hypothesis = y.Hypothesis;
-                const materials = y.Materials;
-                const process = y.Process;
-                const result = y.Result;
-
-                if (!foundTopics.has(topic)) {
-                    foundTopics.add(topic);
-                    foundHypotheses.add(hypothesis); // 부분 일치 검색의 경우 해당 Hypothesis도 저장
-                    foundMaterials.add(materials);
-                    foundProcess.add(process);
-                    foundResult.add(result);
-                }
+            // 이미 해당 주제로 결과가 저장된 경우, 기존 결과에 추가
+            if (results[topic]) {
+                results[topic].hypothesis.push(x.Hypothesis);
+                results[topic].materials.push(x.Materials);
+                results[topic].process.push(x.Process);
+                results[topic].result.push(x.Result);
+            } else {
+                // 해당 주제로 처음으로 결과를 저장하는 경우
+                results[topic] = {
+                    topic: topic,
+                    hypothesis: [x.Hypothesis],
+                    materials: [x.Materials],
+                    process: [x.Process],
+                    result: [x.Result]
+                };
             }
         }
     }
 
-    if (foundTopics.size === 0) {
+    if (Object.keys(results).length === 0) {
         res.status(404).json({ message: "No matching document found." });
     } else {
-        const results = Array.from(foundTopics).map((topic) => {
-            return { topic, hypothesis: Array.from(foundHypotheses), materials: Array.from(foundMaterials), process: Array.from(foundProcess), result: Array.from(foundResult) };
-        });
-        res.status(200).json(results); // 결과를 JSON으로 반환
+        const finalResults = Object.values(results);
+        res.status(200).json(finalResults); // 결과를 JSON으로 반환
     }
 });
-
 
 app.listen(port, () => console.log(`${port}Port`));
